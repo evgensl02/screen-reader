@@ -1,0 +1,28 @@
+plugins {
+    id 'java'
+}
+
+group = 'org.evgensl'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.github.kwhat:jnativehook:2.2.2'
+    implementation 'net.sourceforge.tess4j:tess4j:5.13.0'
+    implementation 'com.googlecode.soundlibs:mp3spi:1.9.5-1'
+    implementation 'com.googlecode.soundlibs:jlayer:1.0.1-2'
+    testImplementation platform('org.junit:junit-bom:6.0.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+tasks.withType(JavaExec).configureEach {
+    jvmArgs "-Dfile.encoding=UTF-8"
+}
