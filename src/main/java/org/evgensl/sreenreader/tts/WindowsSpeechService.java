@@ -1,6 +1,9 @@
-package org.evgensl.sreenreader.speech;
+package org.evgensl.sreenreader.tts;
+
+import org.evgensl.sreenreader.tts.api.TextToSpeechService;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 
 public class WindowsSpeechService implements TextToSpeechService {
@@ -8,7 +11,7 @@ public class WindowsSpeechService implements TextToSpeechService {
     private Process currentProcess;
 
     @Override
-    public Path generateAudio(String text) {
+    public InputStream generateAudio(String text) {
         stop();
         try {
             ProcessBuilder builder =

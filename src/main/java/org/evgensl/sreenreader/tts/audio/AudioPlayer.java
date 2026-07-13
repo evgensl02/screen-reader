@@ -1,8 +1,10 @@
-package org.evgensl.sreenreader.speech;
+package org.evgensl.sreenreader.tts.audio;
 
+import javazoom.jl.decoder.JavaLayerException;
 import javazoom.jl.player.Player;
 
 import java.io.BufferedInputStream;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -11,23 +13,21 @@ public class AudioPlayer {
     private Thread playbackThread;
     private volatile boolean playing;
 
-    public void playAudio(Path path, Runnable onFinished) {
+    public void playAudio(InputStream inputStream) {
         stopAudio();
 
         playing = true;
 
         playbackThread = new Thread(() -> {
-            try (BufferedInputStream input = new BufferedInputStream(Files.newInputStream(path))) {
-                Player player = new Player(input);
+
+            Player player = null;
+            try {
+                player = new Player(inputStream);
                 player.play();
-            } catch (Exception e) {
-                throw new RuntimeException("Ошибка воспроизведения", e);
-            } finally {
-                playing = false;
-                if (onFinished != null) {
-                    onFinished.run();
-                }
+            } catch (JavaLayerException e) {
+                throw new RuntimeException(e);
             }
+
         });
         playbackThread.start();
     }

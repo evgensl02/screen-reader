@@ -4,13 +4,12 @@ import org.evgensl.sreenreader.image.ImageProcessor;
 import org.evgensl.sreenreader.image.ScreenshotService;
 import org.evgensl.sreenreader.orc.OcrService;
 import org.evgensl.sreenreader.screen.ScreenSelector;
-import org.evgensl.sreenreader.speech.AudioPlayer;
-import org.evgensl.sreenreader.speech.TextToSpeechService;
+import org.evgensl.sreenreader.tts.audio.AudioPlayer;
+import org.evgensl.sreenreader.tts.api.TextToSpeechService;
 
 import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStream;
+import java.util.concurrent.ExecutorService;
 
 public class AppController {
 
@@ -20,13 +19,15 @@ public class AppController {
     private final TextToSpeechService textToSpeechService;
     private final ImageProcessor imageProcessor;
     private final AudioPlayer audioPlayer;
+    private final ExecutorService executor;
 
     public AppController(ScreenSelector selector,
                          ScreenshotService screenshotService,
                          OcrService ocrService,
                          TextToSpeechService textToSpeechService,
                          ImageProcessor imageProcessor,
-                         AudioPlayer audioPlayer
+                         AudioPlayer audioPlayer,
+                         ExecutorService executor
     ) {
         this.selector = selector;
         this.screenshotService = screenshotService;
@@ -34,36 +35,23 @@ public class AppController {
         this.textToSpeechService = textToSpeechService;
         this.imageProcessor = imageProcessor;
         this.audioPlayer = audioPlayer;
+        this.executor = executor;
     }
 
     public void startSelection() {
         selector.select().thenAccept(rectangle -> {
-            BufferedImage image = imageProcessor.upscale(screenshotService.capture(rectangle), 2);
-            String text = ocrService.recognize(image);
-            if (!text.isBlank()) {
-                Path audioFile = textToSpeechService.generateAudio(text);
-                try {
-                    System.out.println(audioFile);
-                    System.out.println(Files.exists(audioFile));
-                    System.out.println(Files.size(audioFile));
-                    audioPlayer.playAudio(audioFile, () -> deleteTempFile(audioFile));
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+            executor.submit(() -> {
+                BufferedImage image = imageProcessor.upscale(screenshotService.capture(rectangle), 2);
+                String text = ocrService.recognize(image);
+                if (!text.isBlank()) {
+                    InputStream audioFile = textToSpeechService.generateAudio(text);
+                    audioPlayer.playAudio(audioFile);
                 }
-            }
+            });
+
         });
     }
 
-    private void deleteTempFile(Path file) {
-        if (file == null) {
-            return;
-        }
-        try {
-            Files.deleteIfExists(file);
-        } catch (IOException e) {
-            System.err.println("Не удалось удалить временный файл: " + file);
-        }
-    }
 
     public void cancelSelection() {
         selector.cancelSelection();
