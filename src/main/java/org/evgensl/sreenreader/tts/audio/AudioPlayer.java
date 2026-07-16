@@ -1,42 +1,82 @@
 package org.evgensl.sreenreader.tts.audio;
 
-import javazoom.jl.decoder.JavaLayerException;
 import javazoom.jl.player.Player;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
+import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 public class AudioPlayer {
 
-    private Thread playbackThread;
-    private volatile boolean playing;
+    private final Logger log = LoggerFactory.getLogger(AudioPlayer.class);
+    private volatile Thread playbackThread;
+    private volatile Player currentPlayer;
+    private volatile InputStream currentStream;
+
 
     public void playAudio(InputStream inputStream) {
+
         stopAudio();
+        Thread thread = new Thread(() -> {
 
-        playing = true;
+            try (
+                    BufferedInputStream buffer =
+                            new BufferedInputStream(inputStream)
+            ) {
 
-        playbackThread = new Thread(() -> {
+                currentStream = buffer;
+                Player player = new Player(buffer);
+                currentPlayer = player;
 
-            Player player = null;
-            try {
-                player = new Player(inputStream);
                 player.play();
-            } catch (JavaLayerException e) {
-                throw new RuntimeException(e);
+
+            } catch (Exception e) {
+                if (!Thread.currentThread().isInterrupted()) {
+                    log.error(e.toString());
+                }
+            } finally {
+                currentPlayer = null;
+                playbackThread = null;
             }
 
-        });
-        playbackThread.start();
+
+        }, "audio-player");
+
+
+        playbackThread = thread;
+
+        thread.setDaemon(true);
+        thread.start();
     }
 
-    public void stopAudio() {
-        playing = false;
 
-        if (playbackThread != null) {
-            playbackThread.interrupt();
+    public void stopAudio() {
+
+        Player player = currentPlayer;
+
+        if (player != null) {
+            player.close();
+            currentPlayer = null;
+        }
+
+        InputStream stream = currentStream;
+
+        if (stream != null) {
+            try {
+                stream.close();
+            } catch (IOException ignored) {
+
+            }
+            currentStream = null;
+        }
+
+        Thread thread = playbackThread;
+
+        if (thread != null) {
+            thread.interrupt();
+            playbackThread = null;
         }
     }
 }

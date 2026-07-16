@@ -13,7 +13,7 @@ public class OcrService {
     public OcrService() {
         tesseract = new Tesseract();
         tesseract.setLanguage("eng+rus");
-        tesseract.setDatapath("D:\\evgensl\\Tesseract-OCR\\tessdata");
+        tesseract.setDatapath("C:\\Users\\borja\\AppData\\Local\\Programs\\Tesseract-OCR\\tessdata");
     }
 
     public String recognize(BufferedImage image) {

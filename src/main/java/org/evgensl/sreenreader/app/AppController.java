@@ -4,6 +4,7 @@ import org.evgensl.sreenreader.image.ImageProcessor;
 import org.evgensl.sreenreader.image.ScreenshotService;
 import org.evgensl.sreenreader.orc.OcrService;
 import org.evgensl.sreenreader.screen.ScreenSelector;
+import org.evgensl.sreenreader.tts.api.Session;
 import org.evgensl.sreenreader.tts.audio.AudioPlayer;
 import org.evgensl.sreenreader.tts.api.TextToSpeechService;
 
@@ -20,6 +21,7 @@ public class AppController {
     private final ImageProcessor imageProcessor;
     private final AudioPlayer audioPlayer;
     private final ExecutorService executor;
+    private Session session;
 
     public AppController(ScreenSelector selector,
                          ScreenshotService screenshotService,
@@ -42,9 +44,10 @@ public class AppController {
         selector.select().thenAccept(rectangle -> {
             executor.submit(() -> {
                 BufferedImage image = imageProcessor.upscale(screenshotService.capture(rectangle), 2);
-                String text = ocrService.recognize(image);
+                String text = cleanText(ocrService.recognize(image));
                 if (!text.isBlank()) {
-                    InputStream audioFile = textToSpeechService.generateAudio(text);
+                    session = textToSpeechService.generateAudio(text);
+                    InputStream audioFile = session.getAudioStream();
                     audioPlayer.playAudio(audioFile);
                 }
             });
@@ -52,8 +55,19 @@ public class AppController {
         });
     }
 
-
+    private String cleanText(String text) {
+        return text
+                .replace("\r\n", "\n")
+                .replace("\n", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
     public void cancelSelection() {
         selector.cancelSelection();
+        audioPlayer.stopAudio();
+        if (session != null) {
+            session.close();
+            session = null;
+        }
     }
 }

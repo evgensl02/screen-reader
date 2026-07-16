@@ -1,5 +1,8 @@
 package org.evgensl.sreenreader.tts.edge;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
@@ -7,16 +10,18 @@ import java.util.concurrent.CompletionStage;
 
 public final class EdgeWebSocketListener implements WebSocket.Listener {
 
-    private final EdgeMessageParser edgeMessageParser;
+    private final Logger log = LoggerFactory.getLogger(EdgeWebSocketListener.class);
+    private final EdgeMessageParser parser;
 
-    public EdgeWebSocketListener(EdgeMessageParser edgeMessageParser) {
-        this.edgeMessageParser = edgeMessageParser;
+    public EdgeWebSocketListener(EdgeMessageParser parser) {
+        this.parser = parser;
     }
+
 
     @Override
     public void onOpen(WebSocket webSocket) {
-        System.out.println("Connected");
-        WebSocket.Listener.super.onOpen(webSocket);
+        log.info("WebSocket connected");
+        webSocket.request(1);
     }
 
 
@@ -26,10 +31,10 @@ public final class EdgeWebSocketListener implements WebSocket.Listener {
             CharSequence data,
             boolean last
     ) {
-        edgeMessageParser.parseText(data.toString());
-
+        if (data.toString().contains("Path:turn.end")) {
+            parser.close();
+        }
         webSocket.request(1);
-
         return CompletableFuture.completedFuture(null);
     }
 
@@ -40,25 +45,30 @@ public final class EdgeWebSocketListener implements WebSocket.Listener {
             ByteBuffer data,
             boolean last
     ) {
-        edgeMessageParser.parseBinary(data);
-
+        parser.parseBinary(data);
         webSocket.request(1);
-
         return CompletableFuture.completedFuture(null);
     }
+
 
     @Override
-    public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
-        System.out.println(reason);
-
+    public CompletionStage<?> onClose(
+            WebSocket webSocket,
+            int statusCode,
+            String reason
+    ) {
+        log.info("Edge TTS closed: {}", reason);
+        parser.close();
         return CompletableFuture.completedFuture(null);
     }
+
 
     @Override
     public void onError(
             WebSocket webSocket,
             Throwable error
     ) {
-        error.printStackTrace();
+        log.error(error.getMessage());
+        parser.close();
     }
 }
