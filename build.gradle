@@ -1,9 +1,14 @@
 plugins {
     id 'java'
+    id 'application'
 }
 
 group = 'org.evgensl'
 version = '1.0-SNAPSHOT'
+
+application {
+    mainClass = 'org.evgensl.screenreader.Main'
+}
 
 repositories {
     mavenCentral()
@@ -27,4 +32,24 @@ test {
 
 tasks.withType(JavaExec).configureEach {
     jvmArgs "-Dfile.encoding=UTF-8"
+}
+
+tasks.register('jpackageImage', Exec) {
+    dependsOn 'installDist'
+    doFirst {
+        delete file("$buildDir/dist/ScreenReader")
+    }
+    def javaHome = System.getProperty('java.home')
+    def libDir = file("$buildDir/install/screen-reader/lib").absolutePath
+    def dest = file("$buildDir/dist").absolutePath
+    commandLine "$javaHome/bin/jpackage",
+            '--type', 'app-image',
+            '--name', 'ScreenReader',
+            '--input', libDir,
+            '--main-jar', "screen-reader-${version}.jar",
+            '--main-class', 'org.evgensl.screenreader.Main',
+            '--dest', dest,
+            '--add-modules', 'java.base,java.desktop,java.logging,java.net.http,java.prefs',
+            '--jlink-options', '--compress=2 --strip-debug --no-header-files --no-man-pages',
+            '--java-options', '-Dfile.encoding=UTF-8'
 }

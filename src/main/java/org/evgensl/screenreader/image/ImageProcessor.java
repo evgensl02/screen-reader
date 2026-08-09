@@ -1,4 +1,4 @@
-package org.evgensl.sreenreader.image;
+package org.evgensl.screenreader.image;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;

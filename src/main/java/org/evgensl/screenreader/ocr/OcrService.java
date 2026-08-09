@@ -1,8 +1,9 @@
-package org.evgensl.sreenreader.orc;
+package org.evgensl.screenreader.ocr;
 
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
+import net.sourceforge.tess4j.util.LoadLibs;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -36,6 +37,12 @@ public class OcrService {
         if (prop != null && !prop.isBlank()) {
             return prop;
         }
+
+        File bundled = LoadLibs.extractTessResources("tessdata");
+        if (bundled != null && bundled.exists()) {
+            return bundled.getAbsolutePath();
+        }
+
         String env = System.getenv("TESSDATA_PREFIX");
         if (env != null && !env.isBlank()) {
             return env;

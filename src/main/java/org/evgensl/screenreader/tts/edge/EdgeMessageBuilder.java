@@ -1,6 +1,6 @@
-package org.evgensl.sreenreader.tts.edge;
+package org.evgensl.screenreader.tts.edge;
 
-import org.evgensl.sreenreader.tts.api.SpeechConfig;
+import org.evgensl.screenreader.tts.api.SpeechConfig;
 
 import java.time.Instant;
 import java.time.ZoneOffset;

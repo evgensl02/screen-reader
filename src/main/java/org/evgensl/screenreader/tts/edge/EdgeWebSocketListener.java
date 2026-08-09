@@ -1,4 +1,4 @@
-package org.evgensl.sreenreader.tts.edge;
+package org.evgensl.screenreader.tts.edge;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +33,11 @@ public final class EdgeWebSocketListener implements WebSocket.Listener {
     ) {
         if (data.toString().contains("Path:turn.end")) {
             parser.close();
+            webSocket.sendClose(
+                    WebSocket.NORMAL_CLOSURE,
+                    "Finished"
+            );
+            return CompletableFuture.completedFuture(null);
         }
         webSocket.request(1);
         return CompletableFuture.completedFuture(null);

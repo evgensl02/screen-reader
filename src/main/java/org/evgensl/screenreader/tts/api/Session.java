@@ -1,4 +1,4 @@
-package org.evgensl.sreenreader.tts.api;
+package org.evgensl.screenreader.tts.api;
 
 import java.io.InputStream;
 

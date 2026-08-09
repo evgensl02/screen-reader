@@ -1,6 +1,6 @@
-package org.evgensl.sreenreader.tts.edge;
+package org.evgensl.screenreader.tts.edge;
 
-import org.evgensl.sreenreader.tts.api.Session;
+import org.evgensl.screenreader.tts.api.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

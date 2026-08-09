@@ -1,4 +1,4 @@
-package org.evgensl.sreenreader.input;
+package org.evgensl.screenreader.input;
 
 import com.github.kwhat.jnativehook.GlobalScreen;
 import com.github.kwhat.jnativehook.NativeHookException;

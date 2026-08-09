@@ -1,4 +1,4 @@
-package org.evgensl.sreenreader.tts.audio;
+package org.evgensl.screenreader.tts.audio;
 
 import javazoom.jl.player.Player;
 import org.slf4j.Logger;
@@ -16,18 +16,20 @@ public class AudioPlayer {
     private volatile InputStream currentStream;
 
 
-    public void playAudio(InputStream inputStream) {
+    public void playAudio(InputStream inputStream, Runnable onFinished) {
 
         stopAudio();
         Thread thread = new Thread(() -> {
+            Player player = null;
+            BufferedInputStream buffer = null;
 
-            try (
-                    BufferedInputStream buffer =
-                            new BufferedInputStream(inputStream)
-            ) {
-
+            try {
+                buffer = new BufferedInputStream(inputStream);
                 currentStream = buffer;
-                Player player = new Player(buffer);
+                if (Thread.currentThread().isInterrupted()) {
+                    return;
+                }
+                player = new Player(buffer);
                 currentPlayer = player;
 
                 player.play();
@@ -37,8 +39,24 @@ public class AudioPlayer {
                     log.error(e.toString());
                 }
             } finally {
-                currentPlayer = null;
-                playbackThread = null;
+                if (buffer != null) {
+                    try {
+                        buffer.close();
+                    } catch (IOException ignored) {
+                    }
+                    if (currentStream == buffer) {
+                        currentStream = null;
+                    }
+                }
+                if (player != null && currentPlayer == player) {
+                    currentPlayer = null;
+                }
+                if (playbackThread == Thread.currentThread()) {
+                    playbackThread = null;
+                }
+                if (onFinished != null) {
+                    onFinished.run();
+                }
             }
 
 

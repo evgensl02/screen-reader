@@ -1,4 +1,4 @@
-package org.evgensl.sreenreader.tts.edge;
+package org.evgensl.screenreader.tts.edge;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

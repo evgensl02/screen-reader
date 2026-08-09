@@ -1,4 +1,4 @@
-package org.evgensl.sreenreader.tts.edge;
+package org.evgensl.screenreader.tts.edge;
 
 public final class EdgeConstants {
 

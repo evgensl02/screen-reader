@@ -1,16 +1,17 @@
-package org.evgensl.sreenreader.app;
+package org.evgensl.screenreader.app;
 
-import org.evgensl.sreenreader.image.ImageProcessor;
-import org.evgensl.sreenreader.image.ScreenshotService;
-import org.evgensl.sreenreader.orc.OcrService;
-import org.evgensl.sreenreader.screen.ScreenSelector;
-import org.evgensl.sreenreader.tts.api.Session;
-import org.evgensl.sreenreader.tts.audio.AudioPlayer;
-import org.evgensl.sreenreader.tts.api.TextToSpeechService;
+import org.evgensl.screenreader.image.ImageProcessor;
+import org.evgensl.screenreader.image.ScreenshotService;
+import org.evgensl.screenreader.ocr.OcrService;
+import org.evgensl.screenreader.screen.ScreenSelector;
+import org.evgensl.screenreader.tts.api.Session;
+import org.evgensl.screenreader.tts.audio.AudioPlayer;
+import org.evgensl.screenreader.tts.api.TextToSpeechService;
 
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class AppController {
@@ -23,7 +24,7 @@ public class AppController {
     private final AudioPlayer audioPlayer;
     private final ExecutorService executor;
     private final AtomicReference<Session> currentSession = new AtomicReference<>();
-    private volatile boolean cancelled = false;
+    private final AtomicInteger generation = new AtomicInteger();
 
     public AppController(ScreenSelector selector,
                          ScreenshotService screenshotService,
@@ -44,25 +45,29 @@ public class AppController {
 
     public void startSelection() {
         cancelCurrentSessionAndAudio();
-        cancelled = false;
+        int gen = generation.incrementAndGet();
         selector.select().thenAccept(rectangle -> {
-            if (cancelled) {
+            if (generation.get() != gen) {
                 return;
             }
             executor.submit(() -> {
-                if (cancelled) {
+                if (generation.get() != gen) {
                     return;
                 }
                 BufferedImage captured = screenshotService.capture(rectangle);
                 BufferedImage image = imageProcessor.upscale(captured, 2);
                 String text = cleanText(ocrService.recognize(image));
-                if (!text.isBlank() && !cancelled) {
+                if (!text.isBlank() && generation.get() == gen) {
                     Session session = textToSpeechService.generateAudio(text);
+                    if (generation.get() != gen) {
+                        session.close();
+                        return;
+                    }
                     Session previous = currentSession.getAndSet(session);
                     if (previous != null) {
                         previous.close();
                     }
-                    if (cancelled) {
+                    if (generation.get() != gen) {
                         Session s = currentSession.getAndSet(null);
                         if (s != null) {
                             s.close();
@@ -70,7 +75,11 @@ public class AppController {
                         return;
                     }
                     InputStream audioFile = session.getAudioStream();
-                    audioPlayer.playAudio(audioFile);
+                    audioPlayer.playAudio(audioFile, () -> {
+                        if (currentSession.compareAndSet(session, null)) {
+                            session.close();
+                        }
+                    });
                 }
             });
         });
@@ -88,7 +97,7 @@ public class AppController {
     }
 
     public void cancelSelection() {
-        cancelled = true;
+        generation.incrementAndGet();
         selector.cancelSelection();
         cancelCurrentSessionAndAudio();
     }

@@ -1,17 +1,17 @@
-package org.evgensl.sreenreader;
+package org.evgensl.screenreader;
 
-import org.evgensl.sreenreader.app.AppController;
-import org.evgensl.sreenreader.image.ImageProcessor;
-import org.evgensl.sreenreader.image.ScreenshotService;
-import org.evgensl.sreenreader.input.HotkeyService;
-import org.evgensl.sreenreader.orc.OcrService;
-import org.evgensl.sreenreader.screen.ScreenSelector;
-import org.evgensl.sreenreader.tts.api.SpeechConfig;
-import org.evgensl.sreenreader.tts.audio.AudioPlayer;
-import org.evgensl.sreenreader.tts.edge.EdgeMessageBuilder;
-import org.evgensl.sreenreader.tts.edge.EdgeSpeechClient;
-import org.evgensl.sreenreader.tts.edge.EdgeTtsService;
-import org.evgensl.sreenreader.tts.api.TextToSpeechService;
+import org.evgensl.screenreader.app.AppController;
+import org.evgensl.screenreader.image.ImageProcessor;
+import org.evgensl.screenreader.image.ScreenshotService;
+import org.evgensl.screenreader.input.HotkeyService;
+import org.evgensl.screenreader.ocr.OcrService;
+import org.evgensl.screenreader.screen.ScreenSelector;
+import org.evgensl.screenreader.tts.api.SpeechConfig;
+import org.evgensl.screenreader.tts.audio.AudioPlayer;
+import org.evgensl.screenreader.tts.edge.EdgeMessageBuilder;
+import org.evgensl.screenreader.tts.edge.EdgeSpeechClient;
+import org.evgensl.screenreader.tts.edge.EdgeTtsService;
+import org.evgensl.screenreader.tts.api.TextToSpeechService;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

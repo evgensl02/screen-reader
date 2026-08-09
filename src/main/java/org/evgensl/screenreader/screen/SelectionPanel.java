@@ -1,4 +1,4 @@
-package org.evgensl.sreenreader.screen;
+package org.evgensl.screenreader.screen;
 
 import javax.swing.*;
 import java.awt.*;
