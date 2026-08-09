@@ -3,7 +3,6 @@ package org.evgensl.sreenreader.tts.edge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.net.URI;
@@ -17,10 +16,9 @@ import java.util.concurrent.CompletableFuture;
 public class EdgeSpeechClient {
 
     private static final Logger log = LoggerFactory.getLogger(EdgeSpeechClient.class);
+    private static final int PIPED_BUFFER_SIZE = 256 * 1024; // 256KB buffer
     private final HttpClient httpClient;
     private final EdgeMessageBuilder edgeMessageBuilder;
-    private volatile WebSocket webSocket;
-
 
     public EdgeSpeechClient(EdgeMessageBuilder edgeMessageBuilder) {
         this.edgeMessageBuilder = edgeMessageBuilder;
@@ -29,39 +27,32 @@ public class EdgeSpeechClient {
                 .build();
     }
 
-
     public EdgeSession synthesize(String ssml) {
         try {
-            PipedInputStream input = new PipedInputStream();
+            PipedInputStream input = new PipedInputStream(PIPED_BUFFER_SIZE);
             PipedOutputStream output = new PipedOutputStream(input);
             EdgeMessageParser parser = new EdgeMessageParser(output);
             EdgeWebSocketListener listener = new EdgeWebSocketListener(parser);
-            connect(listener)
-                    .thenApply(ws -> {
-                        this.webSocket = ws;
-                        return ws;
-                    })
-                    .thenCompose(this::sendSpeechConfig
-                    )
-                    .thenCompose(ws ->
-                            sendSsml(ws, ssml)
-                    )
-                    .exceptionally(error -> {
-                        parser.close();
-                        closeWebSocket();
-                        try {
-                            input.close();
-                        } catch (Exception ignored) {
-                        }
-                        log.error("Edge TTS error", error);
-                        return null;
-                    });
-            return new EdgeSession(webSocket, parser, input);
+
+            CompletableFuture<WebSocket> wsFuture = connect(listener)
+                    .thenCompose(this::sendSpeechConfig)
+                    .thenCompose(ws -> sendSsml(ws, ssml));
+
+            wsFuture.exceptionally(error -> {
+                parser.close();
+                try {
+                    input.close();
+                } catch (Exception ignored) {
+                }
+                log.error("Edge TTS error", error);
+                return null;
+            });
+
+            return new EdgeSession(wsFuture, parser, input);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
-
 
     private CompletableFuture<WebSocket> connect(
             EdgeWebSocketListener listener
@@ -80,14 +71,12 @@ public class EdgeSpeechClient {
                 );
     }
 
-
     private CompletableFuture<WebSocket> sendSpeechConfig(
             WebSocket webSocket
     ) {
         return webSocket.sendText(edgeMessageBuilder.buildSpeechConfig(), true)
                 .thenApply(ws -> webSocket);
     }
-
 
     private CompletableFuture<WebSocket> sendSsml(
             WebSocket webSocket,
@@ -110,36 +99,28 @@ public class EdgeSpeechClient {
     }
 
     private String generate() {
-
         try {
-
             long epoch1601 =
                     Instant.parse(
                             "1601-01-01T00:00:00Z"
                     ).toEpochMilli();
 
-
             long now =
                     Instant.now()
                             .toEpochMilli();
-
 
             long ticks =
                     (now - epoch1601)
                             * 10000;
 
-
             long rounded =
                     ticks - (ticks % 3000000000L);
-
 
             String input =
                     rounded + "6A5AA1D4EAFF4E9FB37E23D68491D6F4";
 
-
             MessageDigest sha =
                     MessageDigest.getInstance("SHA-256");
-
 
             byte[] hash =
                     sha.digest(
@@ -148,13 +129,10 @@ public class EdgeSpeechClient {
                             )
                     );
 
-
             StringBuilder result =
                     new StringBuilder();
 
-
-            for(byte b : hash) {
-
+            for (byte b : hash) {
                 result.append(String.format(
                                 "%02x",
                                 b
@@ -164,17 +142,6 @@ public class EdgeSpeechClient {
             return result.toString().toUpperCase();
         } catch (Exception e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    private void closeWebSocket() {
-        WebSocket ws = this.webSocket;
-        if (ws != null) {
-            ws.sendClose(
-                    WebSocket.NORMAL_CLOSURE,
-                    "Finished"
-            );
-            this.webSocket = null;
         }
     }
 }

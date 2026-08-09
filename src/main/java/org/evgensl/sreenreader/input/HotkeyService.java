@@ -7,11 +7,13 @@ import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyListener;
 
 import javax.swing.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class HotkeyService {
 
     private final Runnable selectAction;
     private final Runnable cancelAction;
+    private final AtomicBoolean selectTriggered = new AtomicBoolean(false);
 
     public HotkeyService(Runnable selectAction, Runnable cancelAction) {
         this.selectAction = selectAction;
@@ -32,15 +34,24 @@ public class HotkeyService {
                         boolean ctrl = (nativeEvent.getModifiers() & NativeInputEvent.CTRL_MASK) != 0;
                         boolean shift = (nativeEvent.getModifiers() & NativeInputEvent.SHIFT_MASK) != 0;
 
-                        if (nativeEvent.getKeyCode()
-                                == NativeKeyEvent.VC_L
-                                && ctrl
-                                && shift) {
-                            SwingUtilities.invokeLater(selectAction);
+                        if (ctrl && shift) {
+                            if (selectTriggered.compareAndSet(false, true)) {
+                                SwingUtilities.invokeLater(selectAction);
+                            }
                         }
-                        if (nativeEvent.getKeyCode()
-                                == NativeKeyEvent.VC_ESCAPE) {
+
+                        if (nativeEvent.getKeyCode() == NativeKeyEvent.VC_F7) {
                             SwingUtilities.invokeLater(cancelAction);
+                        }
+                    }
+
+                    @Override
+                    public void nativeKeyReleased(NativeKeyEvent nativeEvent) {
+                        boolean ctrl = (nativeEvent.getModifiers() & NativeInputEvent.CTRL_MASK) != 0;
+                        boolean shift = (nativeEvent.getModifiers() & NativeInputEvent.SHIFT_MASK) != 0;
+
+                        if (!ctrl || !shift) {
+                            selectTriggered.set(false);
                         }
                     }
                 }

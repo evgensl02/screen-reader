@@ -11,6 +11,7 @@ import org.evgensl.sreenreader.tts.api.TextToSpeechService;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class AppController {
 
@@ -21,7 +22,8 @@ public class AppController {
     private final ImageProcessor imageProcessor;
     private final AudioPlayer audioPlayer;
     private final ExecutorService executor;
-    private Session session;
+    private final AtomicReference<Session> currentSession = new AtomicReference<>();
+    private volatile boolean cancelled = false;
 
     public AppController(ScreenSelector selector,
                          ScreenshotService screenshotService,
@@ -41,33 +43,61 @@ public class AppController {
     }
 
     public void startSelection() {
+        cancelCurrentSessionAndAudio();
+        cancelled = false;
         selector.select().thenAccept(rectangle -> {
+            if (cancelled) {
+                return;
+            }
             executor.submit(() -> {
-                BufferedImage image = imageProcessor.upscale(screenshotService.capture(rectangle), 2);
+                if (cancelled) {
+                    return;
+                }
+                BufferedImage captured = screenshotService.capture(rectangle);
+                BufferedImage image = imageProcessor.upscale(captured, 2);
                 String text = cleanText(ocrService.recognize(image));
-                if (!text.isBlank()) {
-                    session = textToSpeechService.generateAudio(text);
+                if (!text.isBlank() && !cancelled) {
+                    Session session = textToSpeechService.generateAudio(text);
+                    Session previous = currentSession.getAndSet(session);
+                    if (previous != null) {
+                        previous.close();
+                    }
+                    if (cancelled) {
+                        Session s = currentSession.getAndSet(null);
+                        if (s != null) {
+                            s.close();
+                        }
+                        return;
+                    }
                     InputStream audioFile = session.getAudioStream();
                     audioPlayer.playAudio(audioFile);
                 }
             });
-
         });
     }
 
     private String cleanText(String text) {
+        if (text == null) {
+            return "";
+        }
         return text
                 .replace("\r\n", "\n")
                 .replace("\n", " ")
                 .replaceAll("\\s+", " ")
                 .trim();
     }
+
     public void cancelSelection() {
+        cancelled = true;
         selector.cancelSelection();
+        cancelCurrentSessionAndAudio();
+    }
+
+    private void cancelCurrentSessionAndAudio() {
         audioPlayer.stopAudio();
-        if (session != null) {
-            session.close();
-            session = null;
+        Session previous = currentSession.getAndSet(null);
+        if (previous != null) {
+            previous.close();
         }
     }
 }
